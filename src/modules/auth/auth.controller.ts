@@ -81,8 +81,14 @@ export const refresh = asyncHandler(async (req: Request, res: Response): Promise
 export const logout = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const rawRefreshToken = req.cookies?.refreshToken || req.cookies?.refresh_token;
 
-  await authService.logout(rawRefreshToken);
-  clearAuthCookies(res);
+  try {
+    await authService.logout(rawRefreshToken);
+  } catch {
+    // Suppress db revocation errors during logout
+  } finally {
+    clearAuthCookies(res);
+  }
+
   sendSuccess(res, { message: 'Logged out successfully' });
 });
 

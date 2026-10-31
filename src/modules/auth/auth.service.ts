@@ -346,16 +346,24 @@ export class AuthService {
   async logout(rawRefreshToken?: string): Promise<void> {
     if (!rawRefreshToken) return;
 
-    const tokenHash = hashToken(rawRefreshToken);
-    const storedToken = await db.refreshToken.findUnique({
-      where: { tokenHash },
-    });
+    if (!isDbOnline()) {
+      return;
+    }
 
-    if (storedToken && storedToken.revokedAt === null) {
-      await db.refreshToken.update({
-        where: { id: storedToken.id },
-        data: { revokedAt: new Date() },
+    try {
+      const tokenHash = hashToken(rawRefreshToken);
+      const storedToken = await db.refreshToken.findUnique({
+        where: { tokenHash },
       });
+
+      if (storedToken && storedToken.revokedAt === null) {
+        await db.refreshToken.update({
+          where: { id: storedToken.id },
+          data: { revokedAt: new Date() },
+        });
+      }
+    } catch {
+      // Offline fallback: do not fail logout if database is unavailable
     }
   }
 
