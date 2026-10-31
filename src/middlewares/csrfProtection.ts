@@ -1,14 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { env } from '../config/env';
 import { ApiError } from '../utils/ApiError';
+import { isAllowedOrigin } from '../utils/origin';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const allowedOrigins = new Set(
-  [
-    ...env.CORS_ORIGIN.split(',').map((o) => o.trim().toLowerCase()),
-    env.APP_PUBLIC_URL.toLowerCase(),
-  ].filter(Boolean)
-);
 
 /**
  * Origin-based CSRF protection for cookie-authenticated state-changing requests.
@@ -39,8 +34,7 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
   // 4. Verify Origin header
   const originHeader = req.headers.origin;
   if (originHeader) {
-    const originLower = originHeader.trim().toLowerCase();
-    if (allowedOrigins.has(originLower)) {
+    if (isAllowedOrigin(originHeader)) {
       return next();
     }
     return next(
@@ -57,7 +51,7 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
     try {
       const refererUrl = new URL(refererHeader);
       const refererOrigin = `${refererUrl.protocol}//${refererUrl.host}`.toLowerCase();
-      if (allowedOrigins.has(refererOrigin)) {
+      if (isAllowedOrigin(refererOrigin)) {
         return next();
       }
     } catch {

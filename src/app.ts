@@ -21,6 +21,7 @@ import {
 import { attemptsRoutes } from './modules/attempts/attempts.routes';
 import { ordersRoutes } from './modules/orders/orders.routes';
 import { handleRazorpayWebhook } from './modules/webhooks/webhooks.controller';
+import { isAllowedOrigin } from './utils/origin';
 import { handleStorageDownload } from './modules/storage/storage.controller';
 import { reportsRoutes, adminReportsRoutes } from './modules/reports/reports.routes';
 import { reportTemplatesRoutes } from './modules/report-templates/report-templates.routes';
@@ -41,13 +42,13 @@ app.use(
   })
 );
 
-// CORS configuration
-const allowedOrigins = env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+// CORS configuration - supports dynamic Vercel domains, localhost, and env config
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl or server-to-server)
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (like mobile apps, curl, SSR or server-to-server)
+      // or origins matching allowlist, localhost, or vercel.app domains
+      if (!origin || isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error('CORS request blocked by security policy'));
