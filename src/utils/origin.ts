@@ -47,3 +47,4 @@ export function isAllowedOrigin(origin: string | undefined | null): boolean {
 
   return false;
 }
+
