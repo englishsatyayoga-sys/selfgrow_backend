@@ -177,6 +177,46 @@ export class ProductsService {
   }
 
   async createProduct(input: CreateProductInput, actorId?: string, ip?: string) {
+    if (!isDbOnline()) {
+      const existingSlug = FALLBACK_PRODUCTS_DB.find((p) => p.slug === input.slug);
+      if (existingSlug) {
+        throw ApiError.conflict('Product with this slug already exists', 'SLUG_EXISTS');
+      }
+
+      const linkedAssessment =
+        FALLBACK_PRODUCTS_DB.find(
+          (p) => p.assessment.id === input.assessmentId || p.assessment.slug === input.assessmentId
+        )?.assessment || {
+          id: input.assessmentId,
+          slug: input.slug,
+          title: input.name,
+          description: input.description,
+          kind: 'OBJECTIVE' as const,
+          version: 1,
+          isActive: true,
+          timeLimitSeconds: 1200,
+          questions: [],
+        };
+
+      const newProduct: any = {
+        id: `prod_${Date.now()}`,
+        slug: input.slug,
+        name: input.name,
+        description: input.description,
+        priceInPaise: input.priceInPaise,
+        currency: input.currency || 'INR',
+        isActive: true,
+        autoRelease: input.autoRelease !== undefined ? input.autoRelease : true,
+        assessmentId: input.assessmentId,
+        assessment: linkedAssessment,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      FALLBACK_PRODUCTS_DB.unshift(newProduct);
+      return newProduct;
+    }
+
     const existingSlug = await db.product.findUnique({
       where: { slug: input.slug },
     });
@@ -221,6 +261,20 @@ export class ProductsService {
   }
 
   async updateProduct(id: string, input: UpdateProductInput, actorId?: string, ip?: string) {
+    if (!isDbOnline()) {
+      const product = FALLBACK_PRODUCTS_DB.find((p) => p.id === id || p.slug === id);
+      if (!product) {
+        throw ApiError.notFound('Product not found', 'PRODUCT_NOT_FOUND');
+      }
+      if (input.name) product.name = input.name;
+      if (input.description) product.description = input.description;
+      if (input.priceInPaise !== undefined) product.priceInPaise = input.priceInPaise;
+      if (input.currency) product.currency = input.currency;
+      if (input.autoRelease !== undefined) (product as any).autoRelease = input.autoRelease;
+      if (input.isActive !== undefined) product.isActive = input.isActive;
+      return product;
+    }
+
     const existing = await db.product.findUnique({
       where: { id },
     });

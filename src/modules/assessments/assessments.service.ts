@@ -72,6 +72,39 @@ export class AssessmentsService {
     actorId?: string,
     ip?: string
   ) {
+    if (!isDbOnline()) {
+      const existing = FALLBACK_PRODUCTS_DB.find((p) => p.assessment.slug === input.slug);
+      if (existing) {
+        throw ApiError.conflict('Assessment with this slug already exists', 'SLUG_EXISTS');
+      }
+
+      const newAssessment: any = {
+        id: `asmt_${Date.now()}`,
+        slug: input.slug,
+        title: input.title,
+        description: input.description,
+        kind: input.kind,
+        timeLimitSeconds: input.timeLimitSeconds || 1200,
+        version: 1,
+        isActive: true,
+        questions: [],
+      };
+
+      FALLBACK_PRODUCTS_DB.unshift({
+        id: `prod_${Date.now()}`,
+        slug: input.slug,
+        name: input.title,
+        description: input.description,
+        priceInPaise: 49900,
+        currency: 'INR',
+        isActive: true,
+        assessmentId: newAssessment.id,
+        assessment: newAssessment,
+      });
+
+      return newAssessment;
+    }
+
     const existing = await db.assessment.findUnique({
       where: { slug: input.slug },
     });
@@ -112,6 +145,20 @@ export class AssessmentsService {
     actorId?: string,
     ip?: string
   ) {
+    if (!isDbOnline()) {
+      const fallback = FALLBACK_PRODUCTS_DB.find(
+        (p) => p.assessment.id === id || p.assessment.slug === id || p.slug === id
+      )?.assessment;
+      if (!fallback) {
+        throw ApiError.notFound('Assessment not found', 'ASSESSMENT_NOT_FOUND');
+      }
+      if (input.title) fallback.title = input.title;
+      if (input.description) fallback.description = input.description;
+      if (input.timeLimitSeconds !== undefined) fallback.timeLimitSeconds = input.timeLimitSeconds;
+      if (input.isActive !== undefined) fallback.isActive = input.isActive;
+      return fallback;
+    }
+
     const existing = await db.assessment.findUnique({
       where: { id },
     });
