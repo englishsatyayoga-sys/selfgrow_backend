@@ -1,6 +1,24 @@
 import pino from 'pino';
 import { env } from './env';
 
+// Safely detect if pino-pretty is resolvable
+let isPrettyAvailable = false;
+try {
+  require.resolve('pino-pretty');
+  isPrettyAvailable = true;
+} catch {
+  isPrettyAvailable = false;
+}
+
+// Disable pino-pretty in cloud/container environments (Render, production) to avoid transport errors
+const isCloudOrProduction =
+  env.NODE_ENV === 'production' ||
+  process.env.NODE_ENV === 'production' ||
+  process.env.RENDER === 'true' ||
+  process.env.CONTAINER === 'true';
+
+const usePrettyTransport = !isCloudOrProduction && isPrettyAvailable && env.NODE_ENV === 'development';
+
 export const logger = pino({
   level: env.NODE_ENV === 'test' ? 'silent' : env.NODE_ENV === 'development' ? 'debug' : 'info',
   redact: {
@@ -32,16 +50,15 @@ export const logger = pino({
     ],
     censor: '[REDACTED]',
   },
-  transport:
-    env.NODE_ENV === 'development'
-      ? {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
-          },
-        }
-      : undefined,
+  transport: usePrettyTransport
+    ? {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'SYS:standard',
+          ignore: 'pid,hostname',
+        },
+      }
+    : undefined,
 });
 
