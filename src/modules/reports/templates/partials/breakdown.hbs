@@ -1,0 +1,26 @@
+{{#if scoreSummary.dimensionScores}}
+<div class="card">
+  <h3 class="section-title">{{dimensionsTitle}}</h3>
+  <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+    <thead>
+      <tr style="border-bottom: 2px solid #cbd5e1; text-align: left; font-size: 10pt; color: #64748b;">
+        <th style="padding: 6px 8px;">Dimension</th>
+        <th style="padding: 6px 8px;">Score</th>
+        <th style="padding: 6px 8px;">Max</th>
+        <th style="padding: 6px 8px;">%</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each scoreSummary.dimensionScores}}
+      <tr style="border-bottom: 1px solid #f1f5f9; font-size: 9.5pt;">
+        <td style="padding: 6px 8px; font-weight: 600;">{{@key}}</td>
+        <td style="padding: 6px 8px;">{{score}}</td>
+        <td style="padding: 6px 8px;">{{max}}</td>
+        <td style="padding: 6px 8px;">{{percentage}}%</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>
+{{/if}}
+

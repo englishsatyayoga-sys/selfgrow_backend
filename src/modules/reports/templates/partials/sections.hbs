@@ -1,0 +1,18 @@
+{{#each sections}}
+<div class="card">
+  <h3 class="section-title">{{title}}</h3>
+  <div class="section-content">{{content}}</div>
+  
+  {{#if recommendations}}
+    <div style="margin-top: 10px;">
+      <strong style="color: #4f46e5; font-size: 10pt;">Recommendations / सुझाव:</strong>
+      <ul class="tag-list">
+        {{#each recommendations}}
+          <li>{{this}}</li>
+        {{/each}}
+      </ul>
+    </div>
+  {{/if}}
+</div>
+{{/each}}
+
