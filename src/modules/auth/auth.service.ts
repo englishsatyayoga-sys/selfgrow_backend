@@ -1,11 +1,14 @@
 import crypto from 'crypto';
 import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
-import { db } from '../../config/db';
+import { db, isDbOnline } from '../../config/db';
 import { env } from '../../config/env';
 import { ApiError } from '../../utils/ApiError';
 import { RegisterInput, LoginInput } from './auth.schema';
 import { Role, Language } from '@prisma/client';
+import { mockUsersStore } from '../admin/admin.fallback';
+
+export const inMemoryUsers = new Map<string, any>();
 
 export interface UserSanitized {
   id: string;
@@ -99,6 +102,34 @@ export class AuthService {
     input: RegisterInput,
     metadata: { userAgent?: string; ip?: string }
   ): Promise<AuthResult> {
+    if (!isDbOnline()) {
+      const emailLower = input.email.toLowerCase();
+      if (inMemoryUsers.has(emailLower) || mockUsersStore.some((u) => u.email.toLowerCase() === emailLower)) {
+        throw ApiError.conflict('User with this email already exists', 'EMAIL_ALREADY_EXISTS');
+      }
+      const passwordHash = await argon2.hash(input.password);
+      const user = {
+        id: `user_${Date.now()}`,
+        name: input.name,
+        email: input.email,
+        passwordHash,
+        role: Role.USER,
+        preferredLanguage: input.preferredLanguage || Language.EN,
+        consentAcceptedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isActive: true,
+      };
+      inMemoryUsers.set(emailLower, user);
+      inMemoryUsers.set(user.id, user);
+
+      const tokens = generateTokens(user);
+      return {
+        user: sanitizeUser(user),
+        tokens,
+      };
+    }
+
     const existingUser = await db.user.findUnique({
       where: { email: input.email },
     });
@@ -144,16 +175,26 @@ export class AuthService {
     metadata: { userAgent?: string; ip?: string }
   ): Promise<AuthResult> {
     let user: any = null;
-    try {
-      user = await db.user.findUnique({
-        where: { email: input.email },
-      });
-    } catch {
-      // If database is disconnected, fallback to demo accounts
+    if (isDbOnline()) {
+      try {
+        user = await db.user.findUnique({
+          where: { email: input.email },
+        });
+      } catch {
+        // If database is disconnected, fallback to demo accounts
+      }
     }
 
     if (!user) {
-      if (
+      const emailLower = input.email.toLowerCase();
+      if (inMemoryUsers.has(emailLower)) {
+        const memoryUser = inMemoryUsers.get(emailLower);
+        const isValid = await argon2.verify(memoryUser.passwordHash, input.password);
+        if (!isValid) {
+          throw ApiError.unauthorized('Invalid email or password', 'INVALID_CREDENTIALS');
+        }
+        user = memoryUser;
+      } else if (
         (input.email === 'user1@test.com' || input.email === 'user@test.com') &&
         input.password === 'Test@12345!'
       ) {
@@ -184,7 +225,23 @@ export class AuthService {
           isActive: true,
         };
       } else {
-        throw ApiError.unauthorized('Invalid email or password', 'INVALID_CREDENTIALS');
+        const mockUser = mockUsersStore.find((u) => u.email.toLowerCase() === emailLower);
+        if (mockUser && (input.password === 'Password@123' || input.password === 'Test@12345!')) {
+          user = {
+            id: mockUser.id,
+            name: mockUser.name,
+            email: mockUser.email,
+            role: mockUser.role,
+            preferredLanguage: mockUser.preferredLanguage,
+            consentAcceptedAt: new Date(),
+            createdAt: new Date(mockUser.createdAt),
+            updatedAt: new Date(mockUser.updatedAt),
+            isActive: mockUser.isActive,
+          };
+          inMemoryUsers.set(user.id, user);
+        } else {
+          throw ApiError.unauthorized('Invalid email or password', 'INVALID_CREDENTIALS');
+        }
       }
     } else {
       if (!user.isActive) {
@@ -332,13 +389,45 @@ export class AuthService {
       };
     }
 
+    if (inMemoryUsers.has(userId)) {
+      const u = inMemoryUsers.get(userId);
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        preferredLanguage: u.preferredLanguage,
+        consentAcceptedAt: u.consentAcceptedAt,
+        isActive: u.isActive,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      };
+    }
+
+    const mock = mockUsersStore.find((u) => u.id === userId);
+    if (mock) {
+      return {
+        id: mock.id,
+        name: mock.name,
+        email: mock.email,
+        role: mock.role,
+        preferredLanguage: mock.preferredLanguage,
+        consentAcceptedAt: new Date(),
+        isActive: mock.isActive,
+        createdAt: new Date(mock.createdAt),
+        updatedAt: new Date(mock.updatedAt),
+      };
+    }
+
     let user: any = null;
-    try {
-      user = await db.user.findUnique({
-        where: { id: userId },
-      });
-    } catch {
-      // db offline
+    if (isDbOnline()) {
+      try {
+        user = await db.user.findUnique({
+          where: { id: userId },
+        });
+      } catch {
+        // db offline
+      }
     }
 
     if (!user) {
