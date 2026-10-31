@@ -12,12 +12,11 @@ import {
   ListAttemptsQuery,
   ListAuditLogsQuery,
 } from './admin.schema';
-import { OrderStatus, AttemptStatus, ReportStatus, Role, Language } from '@prisma/client';
+import { OrderStatus, AttemptStatus, ReportStatus } from '@prisma/client';
 import {
   mockUsersStore,
   mockOrdersStore,
   mockAttemptsStore,
-  mockReportsStore,
   mockAuditLogsStore,
 } from './admin.fallback';
 
@@ -777,7 +776,7 @@ export class AdminService {
         pendingReviewReports: reportsPendingReview,
         failedReports: reportsFailed,
       },
-      revenueTrend: revenuePerDay.map((r) => ({ date: r.date, amount: r.amount })),
+      revenueTrend: revenuePerDay.map((r) => ({ date: r.date, amount: r.revenueInPaise })),
       userTrend: newUsersPerDay.map((u) => ({ date: u.date, count: u.count })),
       revenueByProduct: revenuePerProduct.map((p) => ({
         productId: p.productId,

@@ -1,7 +1,7 @@
 export interface FallbackOption {
   id: string;
   order: number;
-  label: { en: string; hi: string };
+  label: { en: string; hi?: string };
   score: number;
 }
 
@@ -10,7 +10,7 @@ export interface FallbackQuestion {
   order: number;
   section: string;
   type: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TEXT';
-  text: { en: string; hi: string };
+  text: { en: string; hi?: string };
   isRequired: boolean;
   maxLength?: number;
   dimension: string;
@@ -20,23 +20,24 @@ export interface FallbackQuestion {
 export interface FallbackAssessment {
   id: string;
   slug: string;
-  title: { en: string; hi: string };
-  description: { en: string; hi: string };
+  title: { en: string; hi?: string };
+  description: { en: string; hi?: string };
   kind: 'OBJECTIVE' | 'SUBJECTIVE' | 'MIXED';
   version: number;
   isActive: boolean;
-  timeLimitSeconds: number;
+  timeLimitSeconds: number | null;
   questions: FallbackQuestion[];
 }
 
 export interface FallbackProduct {
   id: string;
   slug: string;
-  name: { en: string; hi: string };
-  description: { en: string; hi: string };
+  name: { en: string; hi?: string };
+  description: { en: string; hi?: string };
   priceInPaise: number;
   currency: string;
   isActive: boolean;
+  autoRelease?: boolean;
   assessmentId: string;
   assessment: FallbackAssessment;
 }

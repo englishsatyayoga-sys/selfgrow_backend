@@ -1,5 +1,4 @@
 import { OrderStatus, AttemptStatus, ReportStatus, Role, Language } from '@prisma/client';
-import { FALLBACK_PRODUCTS_DB } from '../products/products.fallback';
 
 // ==================== USERS STORE ====================
 export interface MockAdminUser {
